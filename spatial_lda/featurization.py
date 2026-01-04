@@ -128,15 +128,27 @@ def make_nearest_neighbor_graph(sample_features, sample_dfs, sample_idx, x_col, 
         coords = [x_col, y_col]
     else:
         coords = [x_col, y_col, z_col]
+    
+    # cell_coords : (V, 2) array where V is number of nodes
+    # Records x and y coordinates of each node
     cell_coords = sample_dfs[sample_idx].loc[cell_idx][coords].values
     vor = Voronoi(cell_coords)
+    
+    # vor.ridge_points : (E, 2) array where E is number of edges
+    # First column gives starting node, second column gives ending node
     num_edges = vor.ridge_points.shape[0]
     num_nodes = len(cell_coords)
     src_nodes = vor.ridge_points[:, 0]
     dst_nodes = vor.ridge_points[:, 1]
+
     coord_difference = cell_coords[src_nodes] - cell_coords[dst_nodes]
     edge_lengths = np.sqrt(np.sum(coord_difference**2.0, axis=1))
     assert len(edge_lengths) == num_edges
+
+    # num_nodes : int
+    # src_nodes : (E,) array
+    # dst_nodes : (E,) array
+    # edge_lengths : (E,) array
     return num_nodes, src_nodes, dst_nodes, edge_lengths
 
 
@@ -154,6 +166,9 @@ def make_minimum_spaning_tree_mask(num_nodes, src_nodes, dst_nodes,
 
 def make_difference_matrix(num_nodes, src_nodes, dst_nodes):
     num_edges = len(src_nodes)
+
+    # e.g. np.hstack([np.arange(3), np.arange(3)]) gives the 1d array
+    #      [0, 1, 2, 3, 0, 1, 2, 3]
     rows = np.hstack([np.arange(num_edges), np.arange(num_edges)])
     cols = np.hstack([src_nodes, dst_nodes])
     values = np.hstack([np.ones(num_edges), -1 * np.ones(num_edges)])
@@ -170,7 +185,11 @@ def make_merged_difference_matrices(sample_features, sample_dfs,
     for sample_idx in set(sample_idxs):
         graph = make_nearest_neighbor_graph(
             sample_features, sample_dfs, sample_idx, x_col, y_col, z_col=z_col)
+        
+        # Getting Voronoi graph; src_nodes and dst_nodes describe the starting
+        # and ending nodes of each edge
         num_nodes, src_nodes, dst_nodes, edge_lengths = graph
+
         difference_matrix = make_difference_matrix(
             num_nodes, src_nodes, dst_nodes)
         if reduce_to_mst:
